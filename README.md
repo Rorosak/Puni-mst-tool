@@ -92,6 +92,11 @@ To use all features (such as 3D viewing and rank previews), place or locate the 
 
 Contributions are welcome! Feel free to open an issue or submit a pull request for new Soultimate types, bug fixes, or UI enhancements.
 
+## 🙏 Acknowledgements & Credits
+
+- A big thanks to **SuperTavor** and the **PuniEmu** project ([puniemu](https://github.com/SuperTavor/puniemu)) for all the value definitions (`YoukaiId`, `SoultType`, etc.).
+- Special thanks as well to **Eclip5eLP**, creator of `yokai.exe` ([ykwp-decrypt](https://github.com/Eclip5eLP/ykwp-decrypt)), for the file decryption tools.
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
