@@ -53,11 +53,28 @@ SOULT_TYPES = {
     "14": "ItemDropBooster", "15": "AttackBooster", "16": "ScoreBooster",
     "17": "DefenseBooster", "18": "Stunner", "20": "DirectAttacker",
     "22": "MultipleAreaPopper", "23": "BonusBallsMaker", "24": "AttackBoosterAndHeal",
-    "25": "AllAttackerAndStunner", "26": "InflatorBetter", "27": "CrossAreaPopper",
-    "28": "AllAttackerAndHealer", "30": "Tracer", "31": "SingleAttackerAndHPScaling",
-    "32": "PopperDissapear", "33": "SingleAttackerAndBefriender", "34": "SingleAttackerLuckScaling",
-    "35": "SingleAttackerScalingOnPuni", "36": "AllPopperHealerScalingOnPuni",
-    "41": "NoFillerTracer", "44": "Slasher"
+    "25": "AttackerAndStunner", "26": "InflatorBetter", "27": "CrossAreaPopper",
+    "28": "AttackerAndHealer", "29": "BallMakerAndRecoverHp", "30": "Tracer", 
+    "31": "AttackerAndHPScaling", "32": "PopperDissapear", "33": "SingleAttackerAndBefriender", 
+    "34": "AttackerLuckScaling", "35": "AttackerScalingOnPuni", "36": "AllPopperHealerScalingOnPuni",
+    "37": "AttackerScalingUnity", "38": "RandomPopperScaling", "39": "TimeStopperDamage", 
+    "40": "AttackAndFeverBooster", "41": "NoFillerTracer", "42": "FeverAndSoultGaugeBooster", 
+    "43": "HealerAndSoultBooster", "44": "Slasher", "45": "PopperAndFeverCharger", 
+    "46": "BonusBallClearer", "47": "ReflectingBeam", "48": "TapSlasher", 
+    "49": "OwnPuniEraserAndOrganizer", "50": "BlackholeFeverBooster", "51": "PuniTransformerAndSoultBooster", 
+    "52": "RowClearerBonusBallMaker", "53": "TapClearArea", "54": "ConnectPopper", 
+    "55": "AttackBoosterAndInflator", "56": "TraceEraserTime", "57": "TreasureDropper", 
+    "58": "TapAreaClearer", "59": "OrganizeLinkDamageScaling", "60": "Beyblade", 
+    "61": "AttackBoosterAndDamageReducer", "62": "ThreeDirectionSlasher", "63": "TapGiantPuniAndClear", 
+    "64": "DirectAttackerFeverScaling", "65": "AllPopperAndStunner", "66": "ExtremePopper"
+}
+
+FOOD_TYPES = {
+    "1": "RiceBalls", "2": "Sandwiches", "3": "Sweets", "4": "Chocobars",
+    "5": "Milk", "6": "Juice", "7": "Burgers", "8": "Ramen",
+    "9": "ChineseFood", "10": "Vegetables", "11": "Meat", "12": "Seafood",
+    "13": "Sushi", "14": "Curry", "15": "Dessert", "16": "Oden",
+    "17": "ZarusobaNoodles", "18": "Chips", "19": "IceCream"
 }
 
 CHAMPS_YOKAI = [
@@ -72,7 +89,7 @@ CHAMPS_YOKAI = [
 ]
 
 INDEX_RECHERCHE = {
-    "Nom du Yo-kai (1)": 1, "Rang / Rarity (3)": 3, "Tribu / Kind (4)": 4,
+    "Nom du Yo-kai (1)": 1, "Rang / Rarity (3)": 3, "Tribu / Kind (4)": 4,"Nourriture / FoodType (6)": 6,
     "Dictionary ID (14)": 14, "Type Âmultime (-1 à 44)": "SOULT"
 }
 
@@ -527,6 +544,25 @@ def recherche_avancee():
             continue 
         
         if len(colonnes) <= index_col: continue
+            
+        if index_col == 6:
+            val_food = colonnes[6].strip()
+            nom_food = FOOD_TYPES.get(val_food, "").lower()
+            if val_food == valeur or valeur in nom_food:
+                cat = classifier_yokai(yokai_id)
+                resultats.append(f"[{cat}] ID: {yokai_id} - Nom: {colonnes[1]}")
+            continue
+
+        if index_col == 1:
+            nom_jap = colonnes[1].lower()
+            nom_lecture = colonnes[31].lower() if len(colonnes) > 31 else ""
+            if valeur in nom_jap or valeur in nom_lecture:
+                cat = classifier_yokai(yokai_id)
+                resultats.append(f"[{cat}] ID: {yokai_id} - Nom: {colonnes[1]}")
+        else:
+            if colonnes[index_col].strip().lower() == valeur:
+                cat = classifier_yokai(yokai_id)
+                resultats.append(f"[{cat}] ID: {yokai_id} - Nom: {colonnes[1]}")
         
         if index_col == 1:
             nom_jap = colonnes[1].lower()
@@ -607,6 +643,7 @@ def remplir_cases(colonnes):
         case.delete(0, tk.END)
         if index_colonne < len(colonnes):
             case.insert(0, colonnes[index_colonne])
+    maj_nom_nourriture()
 
     for case in cases_skills.values():
         case.delete(0, tk.END)
@@ -928,6 +965,12 @@ def charger_dossier_mod():
 
     except Exception as e:
         messagebox.showerror("Erreur", f"Erreur lors du chargement du Mod :\n{e}")
+        
+def maj_nom_nourriture(event=None):
+    valeur = cases_entrees[6].get().strip() if len(cases_entrees) > 6 else ""
+    nom_nourriture = FOOD_TYPES.get(valeur, "Inconnu")
+    if 'label_nom_food' in globals():
+        label_nom_food.config(text=f"({nom_nourriture})", fg="#0066cc" if nom_nourriture != "Inconnu" else "gray")
 
 # --- INTERFACE GRAPHIQUE ---
 fenetre = tk.Tk()
@@ -1003,9 +1046,25 @@ for i in range(15):
     ligne = i // 2 
     colonne = (i % 2) * 2 
     tk.Label(frame_basique, text=CHAMPS_YOKAI[i], font=("Arial", 9)).grid(row=ligne, column=colonne, sticky="e", padx=(10, 5), pady=5)
-    entree = tk.Entry(frame_basique, width=35)
-    entree.grid(row=ligne, column=colonne+1, padx=5, pady=5)
-    cases_entrees.append(entree)
+    
+    # Cadre spécial pour le champ FoodType (i == 6)
+    if i == 6:
+        sub_frame_food = tk.Frame(frame_basique)
+        sub_frame_food.grid(row=ligne, column=colonne+1, sticky="w", padx=5, pady=5)
+        
+        entree = tk.Entry(sub_frame_food, width=12)
+        entree.pack(side=tk.LEFT)
+        cases_entrees.append(entree)
+        
+        label_nom_food = tk.Label(sub_frame_food, text="(Inconnu)", font=("Arial", 9, "bold"), fg="gray")
+        label_nom_food.pack(side=tk.LEFT, padx=5)
+        
+        # Met à jour le nom en direct lorsqu'on tape un numéro
+        entree.bind("<KeyRelease>", maj_nom_nourriture)
+    else:
+        entree = tk.Entry(frame_basique, width=35)
+        entree.grid(row=ligne, column=colonne+1, padx=5, pady=5)
+        cases_entrees.append(entree)
 
 # --- UI : ÂMULTIME (SKILLS) ---
 frame_skills = tk.LabelFrame(scrollable_frame, text="✨ Âmultime (Skill)", font=("Arial", 10, "bold"), bg="#fff9e6", padx=10, pady=10)
