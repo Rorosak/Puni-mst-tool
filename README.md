@@ -1,6 +1,6 @@
-# PuniEmu Custom Unit Maker (v5)
+# Puni MST Tool
 
-**PuniEmu Custom Unit Maker** is a comprehensive GUI tool built with Python and Tkinter designed to edit, view, and create custom Yo-kai/units for Yo-kai Watch Puni Puni game files and emulation environments.
+**Puni MST Tool** is a comprehensive GUI tool built with Python and Tkinter designed to edit, view, and create custom Yo-kai/units for Yo-kai Watch Puni Puni game files and emulation environments.
 
 ---
 
@@ -30,6 +30,7 @@
 ## 📋 Prerequisites & Requirements
 
 This tool requires Python 3.8+ and the following dependencies:
+I used python 3.11 it wont work with 3.14 !!!
 
 ### Python Packages (`requirements.txt`)
 ```text
@@ -44,11 +45,11 @@ Pillow>=9.0.0
 To use all features (such as 3D viewing and rank previews), place or locate the following external components:
 1. `yokai.exe`: CLI tool for unpacking/converting `.ez` assets.
 2. `rankicons.png`: Spritesheet containing rank icon graphics.
-3. Game Database Files (`.json` or `.txt`):
+3. Game Database Files (`.json` or `.txt`): THESES ARE NOT PROVIDED FIND IT YOURSELF
    - `ywp_mst_youkai`
    - `ywp_mst_youkai_skill`
    - `ywp_mst_youkai_skill_level`
-   - `youkai/` resource folder containing `.ayd` or `.png` unit files.
+   - `youkai/` resource folder containing `.ayd`, `.png` and `.ez` unit files. DONT WORK WITH NEWEST AYD PUNI RN
 
 ---
 
@@ -57,7 +58,7 @@ To use all features (such as 3D viewing and rank previews), place or locate the 
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/your-username/PuniEmu-Custom-Unit-Maker.git
-   cd PuniEmu-Custom-Unit-Maker
+   cd Puni-MST-Tool
    ```
 
 2. **Install Dependencies**:
@@ -80,6 +81,7 @@ To use all features (such as 3D viewing and rank previews), place or locate the 
 ## 📁 Repository Structure
 
 ```text
+├── Resources            # Files needed to work
 ├── main.py              # Main GUI application script
 ├── requirements.txt     # Python dependency list
 ├── README.md            # Documentation
