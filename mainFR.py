@@ -931,7 +931,7 @@ def charger_dossier_mod():
 
 # --- INTERFACE GRAPHIQUE ---
 fenetre = tk.Tk()
-fenetre.title("PuniEmu Custom Unit Maker - Édition Complète V5")
+fenetre.title("Puni MST Tool")
 fenetre.geometry("1050x800")
 fenetre.withdraw() # On cache la fenêtre principale pour laisser la pop-up s'afficher
 
