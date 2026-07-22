@@ -57,7 +57,7 @@ To use all features (such as 3D viewing and rank previews), place or locate the 
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/PuniEmu-Custom-Unit-Maker.git
+   git clone https://github.com/Rorosak/Puni-mst-tool.git
    cd Puni-MST-Tool
    ```
 
