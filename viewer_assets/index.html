@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yo-kai 3D Animation Viewer</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <!-- Header Bar -->
+  <header>
+    <div class="brand">
+      <span class="brand-icon">🌸</span>
+      <span class="brand-title">Yo-kai 3D Animation Viewer</span>
+    </div>
+
+    <div class="model-badge" id="modelBadge">
+      <span id="badgeYokaiName">Chargement...</span>
+      <span>•</span>
+      <span id="badgeStats">-- triangles · -- os · -- animations</span>
+    </div>
+
+    <div class="model-switcher">
+      <input type="text" id="switchYokaiId" placeholder="ID Yo-kai (ex: 1181000)" />
+      <button id="btnSwitchYokai">Charger</button>
+    </div>
+  </header>
+
+  <!-- Viewport Container -->
+  <main class="viewport-container" id="dropzone">
+    <canvas id="viewer"></canvas>
+
+    <!-- Overlay View Presets -->
+    <div class="overlay-views">
+      <button data-view="front" title="Vue de face">Face</button>
+      <button data-view="side" title="Vue de profil">Profil</button>
+      <button data-view="top" title="Vue du dessus">Dessus</button>
+    </div>
+
+    <!-- Overlay Tool Toggles -->
+    <div class="overlay-tools">
+      <button class="tool-btn" id="btnFit" title="Cadrer la caméra (Touche F)">⛶</button>
+      <button class="tool-btn active" id="btnGrid" title="Afficher la grille">▦</button>
+      <button class="tool-btn" id="btnWire" title="Afficher les arêtes fil de fer">◇</button>
+      <button class="tool-btn" id="btnBones" title="Afficher le squelette animé">⌘</button>
+      <button class="tool-btn active" id="btnTexture" title="Activer les textures">▧</button>
+      <button class="tool-btn" id="btnCapture" title="Prendre une capture PNG">▣</button>
+    </div>
+
+    <!-- Status / Loading Overlay -->
+    <div class="status-overlay" id="statusOverlay">
+      <div class="spinner"></div>
+      <strong id="statusText">Chargement du modèle 3D et des animations...</strong>
+      <span id="statusDetails" style="font-size: 12px; color: var(--text-muted);">Extraction YMD et textures</span>
+    </div>
+  </main>
+
+  <!-- Bottom Timeline & Playback Bar -->
+  <footer class="timeline-bar">
+    <div class="timeline-row">
+      <button class="play-btn" id="btnPlay" title="Lecture / Pause (Espace)" disabled>▶</button>
+
+      <div class="anim-selector-group">
+        <label for="animation">ANIMATION</label>
+        <select id="animation" disabled>
+          <option value="-1">Pose de référence (T-Pose)</option>
+        </select>
+      </div>
+
+      <span class="time-display" id="timeText">0.00 / 0.00 s</span>
+
+      <select id="speed" title="Vitesse de lecture">
+        <option value="0.25">× 0,25</option>
+        <option value="0.5">× 0,5</option>
+        <option value="1" selected>× 1,0</option>
+        <option value="1.5">× 1,5</option>
+        <option value="2">× 2,0</option>
+      </select>
+    </div>
+
+    <div class="scrubber-container">
+      <input type="range" id="scrub" min="0" max="1" value="0" step="0.001" disabled />
+    </div>
+
+    <div class="timeline-hint">
+      <span id="clipInfo">0 animation disponible</span>
+      <span>Clic gauche : Tourner · Maj + Clic ou Clic droit : Déplacer · Molette : Zoom · Espace : Play/Pause</span>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script type="module">
+  import { Viewer } from '/viewer.js';
+
+  let viewer = null;
+  let currentYokaiId = '';
+  let currentScene = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function setStatus(visible, text = '', details = '') {
+    const overlay = $('statusOverlay');
+    overlay.style.display = visible ? 'flex' : 'none';
+    if (text) $('statusText').textContent = text;
+    if (details) $('statusDetails').textContent = details;
+  }
+
+  function togglePlay() {
+    if (!viewer || !currentScene?.clips?.length) return;
+    if (viewer.clip < 0) {
+      const idle = currentScene.clips.findIndex(c => /_stl$/.test(c.name));
+      viewer.clip = idle >= 0 ? idle : 0;
+      $('animation').value = viewer.clip;
+      viewer.fit();
+    }
+    viewer.playing = !viewer.playing;
+    $('btnPlay').textContent = viewer.playing ? 'Ⅱ' : '▶';
+  }
+
+  async function loadModel(yokaiId) {
+    if (!yokaiId) return;
+    currentYokaiId = yokaiId;
+    $('switchYokaiId').value = yokaiId;
+    setStatus(true, `Chargement du Yo-kai ${yokaiId}...`, 'Lecture du YMD et extraction des clips');
+
+    try {
+      const res = await fetch(`/api/scene?yokai=${encodeURIComponent(yokaiId)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Erreur réseau' }));
+        throw new Error(err.error || `Erreur HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      currentScene = data.scene;
+      const metadata = data.metadata || {};
+
+      // Mettre à jour l'en-tête
+      $('badgeYokaiName').textContent = metadata.name ? `[${yokaiId}] ${metadata.name}` : `Yo-kai ${yokaiId}`;
+      const totalTriangles = currentScene.meshes.reduce((acc, m) => 
+        acc + m.primitives.reduce((pAcc, p) => pAcc + p.indices.length / 3, 0), 0);
+      const totalBones = currentScene.skins.reduce((acc, s) => Math.max(acc, s.bones.length), 0);
+      $('badgeStats').textContent = `${Math.round(totalTriangles).toLocaleString('fr-FR')} triangles · ${totalBones} os · ${currentScene.clips.length} animations`;
+
+      // Charger dans le viewer WebGL
+      const textureBaseUrl = `/api/texture/${encodeURIComponent(yokaiId)}/`;
+      const missingTextures = await viewer.load(currentScene, textureBaseUrl, 'Y');
+      if (missingTextures.length > 0) {
+        console.warn('Textures absentes:', missingTextures);
+      }
+
+      // Remplir le sélecteur d'animations
+      const animSelect = $('animation');
+      animSelect.innerHTML = '<option value="-1">Pose de référence (T-Pose)</option>';
+      currentScene.clips.forEach((clip, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `[${String(i + 1).padStart(2, '0')}] ${clip.name} (${clip.duration.toFixed(2)}s)`;
+        animSelect.appendChild(opt);
+      });
+
+      animSelect.disabled = false;
+      $('btnPlay').disabled = currentScene.clips.length === 0;
+      $('scrub').disabled = currentScene.clips.length === 0;
+      $('clipInfo').textContent = `${currentScene.clips.length} animation(s) disponibles · SGF YMD 20150817`;
+
+      // Sélectionner l'animation idle / stand par défaut
+      const idleIndex = currentScene.clips.findIndex(c => /_stl$/.test(c.name));
+      const initialClip = idleIndex >= 0 ? idleIndex : (currentScene.clips.length > 0 ? 0 : -1);
+
+      viewer.clip = initialClip;
+      viewer.time = 0;
+      viewer.playing = initialClip >= 0;
+      viewer.fit();
+
+      animSelect.value = initialClip;
+      $('btnPlay').textContent = viewer.playing ? 'Ⅱ' : '▶';
+
+      setStatus(false);
+      toast(`Yo-kai ${yokaiId} chargé avec succès !`);
+    } catch (e) {
+      setStatus(false);
+      alert(`Impossible d'ouvrir le modèle 3D du Yo-kai ${yokaiId} :\n${e.message}`);
+    }
+  }
+
+  // Initialisation du viewer
+  window.addEventListener('DOMContentLoaded', () => {
+    const canvas = $('viewer');
+    viewer = new Viewer(canvas, (time) => {
+      const clip = viewer.scene?.clips?.[viewer.clip];
+      const duration = clip?.duration || 0;
+      $('timeText').textContent = `${time.toFixed(2)} / ${duration.toFixed(2)} s`;
+      if (document.activeElement !== $('scrub')) {
+        $('scrub').value = duration > 0 ? (time / duration) : 0;
+      }
+    });
+
+    // Événements d'animation et lecture
+    $('btnPlay').onclick = togglePlay;
+
+    $('animation').onchange = () => {
+      if (!viewer) return;
+      const idx = Number($('animation').value);
+      viewer.clip = idx;
+      viewer.time = 0;
+      viewer.playing = idx >= 0;
+      $('btnPlay').textContent = viewer.playing ? 'Ⅱ' : '▶';
+      viewer.fit();
+    };
+
+    $('speed').onchange = () => {
+      if (viewer) viewer.speed = Number($('speed').value);
+    };
+
+    $('scrub').oninput = () => {
+      if (!viewer) return;
+      const clip = viewer.scene?.clips?.[viewer.clip];
+      const duration = clip?.duration || 0;
+      viewer.playing = false;
+      $('btnPlay').textContent = '▶';
+      viewer.time = Number($('scrub').value) * duration;
+    };
+
+    // Boutons de vue caméra
+    document.querySelectorAll('[data-view]').forEach(btn => {
+      btn.onclick = () => viewer?.view(btn.dataset.view);
+    });
+
+    $('btnFit').onclick = () => viewer?.fit();
+
+    // Toggles visuels
+    const bindToggle = (btnId, prop) => {
+      const btn = $(btnId);
+      btn.onclick = () => {
+        if (!viewer) return;
+        viewer[prop] = !viewer[prop];
+        btn.classList.toggle('active', viewer[prop]);
+      };
+    };
+
+    bindToggle('btnGrid', 'grid');
+    bindToggle('btnWire', 'wire');
+    bindToggle('btnBones', 'bones');
+    bindToggle('btnTexture', 'texture');
+
+    // Capture d'écran
+    $('btnCapture').onclick = () => {
+      if (!viewer?.scene) return toast('Aucun modèle chargé.');
+      const a = document.createElement('a');
+      a.href = viewer.screenshot();
+      a.download = `yokai_${currentYokaiId || 'model'}_3d.png`;
+      a.click();
+      toast('Capture d’écran enregistrée !');
+    };
+
+    // Commutateur de Yo-kai
+    $('btnSwitchYokai').onclick = () => {
+      const yid = $('switchYokaiId').value.trim();
+      if (yid) loadModel(yid);
+    };
+    $('switchYokaiId').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $('btnSwitchYokai').click();
+    });
+
+    // Raccourcis clavier
+    document.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'KeyF') {
+        viewer?.fit();
+      }
+    });
+
+    // Récupérer l'ID depuis l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const yokaiParam = urlParams.get('yokai') || urlParams.get('model') || '1181000';
+    loadModel(yokaiParam);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Generated local configuration & caches
+config.json
+.mst_cache_*.json
+
+# Backups & temporary files
+*.bak
+backups/
+
+# Game database & asset folders (not distributed)
+mst/
+gamefiles/
